@@ -21,7 +21,7 @@ jobs:
 
       - name: Run Prodgate
         id: prodgate
-        uses: prodgate-dev/prodgate@c2e35b9
+        uses: prodgate-dev/prodgate@c2e35b97d6b02c5c185f64def8f51610e6aae999
         with:
           plan-json: plan.json
           mode: ${{ contains(github.event.pull_request.labels.*.name, 'prodgate-audit-test') && 'audit' || 'enforce' }}
