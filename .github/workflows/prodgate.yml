@@ -1,0 +1,59 @@
+name: Prodgate external integration
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prodgate:
+    name: Prodgate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run Prodgate
+        id: prodgate
+        uses: prodgate-dev/prodgate@19d22e79ac2e2d7219de370ed3aa50fd9e082137
+        with:
+          plan-json: plan.json
+          mode: ${{ contains(github.event.pull_request.labels.*.name, 'prodgate-audit-test') && 'audit' || 'enforce' }}
+
+      # Test instrumentation: makes output verification easier. A normal
+      # consumer does not need this step.
+      - name: Record Prodgate outputs
+        if: always()
+        shell: bash
+        env:
+          POLICY_VERDICT: ${{ steps.prodgate.outputs.policy-verdict }}
+          WOULD_BLOCK: ${{ steps.prodgate.outputs.would-block }}
+          EXECUTION_OUTCOME: ${{ steps.prodgate.outputs.execution-outcome }}
+          ENFORCEMENT_MODE: ${{ steps.prodgate.outputs.enforcement-mode }}
+          EXIT_CODE: ${{ steps.prodgate.outputs.exit-code }}
+          CRITICAL_COUNT: ${{ steps.prodgate.outputs.critical-count }}
+          WARNING_COUNT: ${{ steps.prodgate.outputs.warning-count }}
+          PLAN_HASH: ${{ steps.prodgate.outputs.plan-hash }}
+          POLICY_DIGEST: ${{ steps.prodgate.outputs.policy-digest }}
+          ENGINE_VERSION: ${{ steps.prodgate.outputs.engine-version }}
+        run: |
+          {
+            echo "## Prodgate integration-test outputs"
+            echo
+            echo "- policy-verdict: \`$POLICY_VERDICT\`"
+            echo "- would-block: \`$WOULD_BLOCK\`"
+            echo "- execution-outcome: \`$EXECUTION_OUTCOME\`"
+            echo "- enforcement-mode: \`$ENFORCEMENT_MODE\`"
+            echo "- exit-code: \`$EXIT_CODE\`"
+            echo "- critical-count: \`$CRITICAL_COUNT\`"
+            echo "- warning-count: \`$WARNING_COUNT\`"
+            echo "- plan-hash: \`$PLAN_HASH\`"
+            echo "- policy-digest: \`$POLICY_DIGEST\`"
+            echo "- engine-version: \`$ENGINE_VERSION\`"
+          } >> "$GITHUB_STEP_SUMMARY"
